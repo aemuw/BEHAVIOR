@@ -3,13 +3,17 @@ using Godot;
 public partial class PlayerController : CharacterBody3D
 {
 	[Export]
-	public float MoveSpeed { get; set; } = 3.0f;
+	public float MoveSpeed { get; set; } = 2.5f;
+
+	[Export]
+	public float RunSpeed { get; set; } = 4.5f;
 
 	[Export]
 	public float MouseSensitivity { get; set; } = 0.0025f;
 
 	private Node3D _head;
 	private Camera3D _camera;
+	private BehaviorTracker _tracker;
 
 	private float _pitch;
 
@@ -17,6 +21,7 @@ public partial class PlayerController : CharacterBody3D
 	{
 		_head = GetNode<Node3D>("Head");
 		_camera = GetNode<Camera3D>("Head/Camera3D");
+		_tracker = GetNode<BehaviorTracker>("/root/BehaviorTracker");
 
 		Input.MouseMode = Input.MouseModeEnum.Captured;
 	}
@@ -26,7 +31,9 @@ public partial class PlayerController : CharacterBody3D
 		if (@event is InputEventMouseMotion mouseMotion &&
 			Input.MouseMode == Input.MouseModeEnum.Captured)
 		{
-			RotateY(-mouseMotion.Relative.X * MouseSensitivity);
+			float yaw = -mouseMotion.Relative.X * MouseSensitivity;
+			RotateY(yaw);
+			_tracker.ReportLook(yaw);
 
 			_pitch -= mouseMotion.Relative.Y * MouseSensitivity;
 			_pitch = Mathf.Clamp(
@@ -57,8 +64,11 @@ public partial class PlayerController : CharacterBody3D
 			"move_left",
 			"move_right",
 			"move_forward",
-            "move_backward"
+			"move_backward"
 		);
+
+		bool sprinting = input != Vector2.Zero && Input.IsPhysicalKeyPressed(Key.Shift);
+		float speed = sprinting ? RunSpeed : MoveSpeed;
 
 		Vector3 direction = new Vector3(input.X, 0.0f, input.Y);
 
@@ -70,8 +80,11 @@ public partial class PlayerController : CharacterBody3D
 		direction = GlobalTransform.Basis * direction;
 		direction.Y = 0.0f;
 
-		Velocity = direction * MoveSpeed;
+		Velocity = direction * speed;
 
 		MoveAndSlide();
+
+		float actualSpeed = new Vector2(Velocity.X, Velocity.Z).Length();
+		_tracker.ReportMovement(delta, actualSpeed, sprinting);
 	}
 }

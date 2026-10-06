@@ -15,6 +15,10 @@ run/main_scene="uid://1a5feh3jx6up"
 config/features=PackedStringArray("4.7", "C#", "Mobile")
 config/icon="res://icon.svg"
 
+[autoload]
+
+BehaviorTracker="*uid://ug3u6dpmqxna"
+
 [display]
 
 window/stretch/mode="canvas_items"
