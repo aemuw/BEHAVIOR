@@ -1,0 +1,14 @@
+# Godot 4+ specific ignores
+.godot/
+
+.vs/
+.idea/
+
+bin/
+obj/
+
+Thumbs.db
+.DS_Store
+
+build/
+dist/
