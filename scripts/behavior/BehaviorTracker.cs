@@ -555,13 +555,25 @@ public partial class BehaviorTracker : Node
 			$"Large turns:      {Look.LargeTurnCount}\n\n" +
 
 			"INTERACTION\n" +
-			$"Interactions:     {InteractionCount}\n" +
-			$"Doors:            {DoorInteractionCount}\n" +
-			$"Last hesitation:  {LastHesitation:F2}s\n" +
-			$"Average hesitation: {AverageHesitation:F2}s\n" +
-			$"Max hesitation:   {Interactions.MaxHesitation:F2}s\n" +
-			$"Quick:            {Interactions.QuickInteractionCount}\n" +
-			$"Long:             {Interactions.LongHesitationCount}\n\n" +
+			$"Interactions:        {InteractionCount}\n" +
+			$"Doors:               {DoorInteractionCount}\n" +
+			$"Unique seen:         {Interactions.UniqueTargetsSeen}\n" +
+			$"Unique interacted:   {Interactions.UniqueTargetsInteracted}\n" +
+			$"Focus events:        {Interactions.FocusEvents}\n" +
+			$"Meaningful focus:    {Interactions.MeaningfulFocusEvents}\n" +
+			$"Deep focus:          {Interactions.DeepFocusEvents}\n" +
+			$"Ignored focus:       {Interactions.IgnoredFocusEvents}\n" +
+			$"Focus time total:    {Interactions.TotalFocusTime:F1}s\n" +
+			$"Focus time avg:      {Interactions.AverageFocusTime:F2}s\n" +
+			$"Focus time max:      {Interactions.MaxFocusTime:F2}s\n" +
+			$"Meaningful rate:     {Interactions.MeaningfulFocusRate:P0}\n" +
+			$"Ignore rate:         {Interactions.DeliberateIgnoreRate:P0}\n" +
+			$"Deep focus rate:     {Interactions.DeepFocusRate:P0}\n" +
+			$"Last hesitation:     {LastHesitation:F2}s\n" +
+			$"Average hesitation:  {AverageHesitation:F2}s\n" +
+			$"Max hesitation:      {Interactions.MaxHesitation:F2}s\n" +
+			$"Quick interactions:  {Interactions.QuickInteractionCount}\n" +
+			$"Long hesitation:     {Interactions.LongHesitationCount}\n\n" +
 
 			"BEHAVIOR PROFILE\n" +
 			$"Exploration:      {ExplorationTendency:P0}\n" +

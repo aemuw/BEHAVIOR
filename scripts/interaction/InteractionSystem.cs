@@ -1,66 +1,202 @@
 using Godot;
 
-//кожен фізичний кадр пускає промінь уперед
-//і запам'ятовує, на що гравець дивиться
-//по E взаємодіє з цим об'єктом
 public partial class InteractionSystem : Node3D
 {
 	[Export]
 	public float Reach { get; set; } = 2.0f;
 
 	private BehaviorTracker _tracker;
+
 	private CollisionObject3D _player;
+
 	private IInteractable _target;
+
+	private GodotObject _targetObject;
+
+	private ulong _targetId;
+
 	private double _targetSince;
 
-	private static double Now => Time.GetTicksMsec() / 1000.0;
+	private static double Now =>
+		Time.GetTicksMsec() / 1000.0;
 
 	public override void _Ready()
 	{
-		_tracker = GetNode<BehaviorTracker>("/root/BehaviorTracker");
+		_tracker =
+			GetNode<BehaviorTracker>(
+                "/root/BehaviorTracker"
+			);
 
-		//шукаємо гравця серед батьків, щоб промінь не потрапляв у його капсулу
 		Node node = GetParent();
-		while (node != null && node is not CollisionObject3D)
+
+		while (
+			node != null &&
+			node is not CollisionObject3D)
 		{
 			node = node.GetParent();
 		}
-		_player = node as CollisionObject3D;
+
+		_player =
+			node as CollisionObject3D;
 	}
 
-	public override void _PhysicsProcess(double delta)
+	public override void _PhysicsProcess(
+		double delta)
 	{
-		Vector3 from = GlobalPosition;
-		Vector3 to = from + (-GlobalTransform.Basis.Z) * Reach;
+		Vector3 from =
+			GlobalPosition;
 
-		var query = PhysicsRayQueryParameters3D.Create(from, to);
+		Vector3 to =
+			from +
+			(-GlobalTransform.Basis.Z) *
+			Reach;
+
+		PhysicsRayQueryParameters3D query =
+			PhysicsRayQueryParameters3D.Create(
+				from,
+				to
+			);
+
 		if (_player != null)
 		{
-			query.Exclude = new Godot.Collections.Array<Rid> { _player.GetRid() };
+			query.Exclude =
+				new Godot.Collections.Array<Rid>
+				{
+					_player.GetRid()
+				};
 		}
 
-		var result = GetWorld3D().DirectSpaceState.IntersectRay(query);
+		var result =
+			GetWorld3D()
+				.DirectSpaceState
+				.IntersectRay(query);
 
-		IInteractable found = null;
-		if (result.Count > 0 && result["collider"].AsGodotObject() is IInteractable interactable)
+		IInteractable found =
+			null;
+
+		GodotObject foundObject =
+			null;
+
+		if (result.Count > 0)
 		{
-			found = interactable;
+			foundObject =
+				result["collider"]
+					.AsGodotObject();
+
+			if (foundObject
+				is IInteractable interactable)
+			{
+				found = interactable;
+			}
 		}
 
-		if (!ReferenceEquals(found, _target))
+		if (!ReferenceEquals(
+				found,
+				_target))
 		{
-			_target = found;
-			_targetSince = Now;
+			EndCurrentFocus(
+				interacted: false
+			);
+
+			_target =
+				found;
+
+			_targetObject =
+				foundObject;
+
+			if (_targetObject != null)
+			{
+				_targetId =
+					_targetObject
+						.GetInstanceId();
+			}
+			else
+			{
+				_targetId = 0;
+			}
+
+			_targetSince =
+				_target != null
+					? Now
+					: 0.0;
+
+			if (_target != null)
+			{
+				_tracker
+					.Interactions
+					.ReportFocusStarted(
+						_targetId
+					);
+			}
 		}
 	}
 
-	public override void _UnhandledInput(InputEvent @event)
+	public override void _UnhandledInput(
+		InputEvent @event)
 	{
-		if (_target != null && @event.IsActionPressed("interact"))
+		if (_target == null)
 		{
-			double hesitation = Now - _targetSince;
-			_tracker.ReportInteraction(hesitation);
-			_target.Interact(this);
+			return;
 		}
+
+		if (!@event.IsActionPressed(
+				"interact"))
+		{
+			return;
+		}
+
+		double hesitation =
+			Now - _targetSince;
+
+		_tracker.ReportInteraction(
+			hesitation
+		);
+		
+		_tracker.BeginObservation(
+			BehaviorContext.ObjectInteracted
+		);
+
+		_tracker.BeginObservation(
+			BehaviorContext.ObjectInteracted
+		);
+
+		_tracker.Interactions
+			.ReportFocusEnded(
+				_targetId,
+				hesitation,
+				interacted: true
+			);
+
+		_target.Interact(this);
+
+		_target = null;
+		_targetObject = null;
+		_targetId = 0;
+		_targetSince = 0.0;
+	}
+
+	private void EndCurrentFocus(
+		bool interacted)
+	{
+		if (_target == null ||
+			_targetObject == null)
+		{
+			return;
+		}
+
+		double duration =
+			Now - _targetSince;
+
+		_tracker.Interactions
+			.ReportFocusEnded(
+				_targetId,
+				duration,
+				interacted
+			);
+
+		_target = null;
+		_targetObject = null;
+		_targetId = 0;
+		_targetSince = 0.0;
 	}
 }
