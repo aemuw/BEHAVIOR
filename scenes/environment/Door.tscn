@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://ceisu5x1yjlhx"]
+
+[ext_resource type="Script" uid="uid://cg4xcdeqp4h8p" path="res://scripts/interaction/Door.cs" id="1_h0m4l"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_3mj47"]
+size = Vector3(1, 2.1, 0.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3mj47"]
+size = Vector3(1, 2.1, 0.1)
+
+[node name="Door" type="AnimatableBody3D" unique_id=2038260737]
+script = ExtResource("1_h0m4l")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=520944624]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.05, 0)
+mesh = SubResource("BoxMesh_3mj47")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1825404731]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.05, 0)
+shape = SubResource("BoxShape3D_3mj47")

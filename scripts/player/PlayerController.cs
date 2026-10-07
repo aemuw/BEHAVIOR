@@ -67,7 +67,7 @@ public partial class PlayerController : CharacterBody3D
 			"move_backward"
 		);
 
-		bool sprinting = input != Vector2.Zero && Input.IsPhysicalKeyPressed(Key.Shift);
+		bool sprinting = input != Vector2.Zero && Input.IsActionPressed("sprint");
 		float speed = sprinting ? RunSpeed : MoveSpeed;
 
 		Vector3 direction = new Vector3(input.X, 0.0f, input.Y);
@@ -85,6 +85,7 @@ public partial class PlayerController : CharacterBody3D
 		MoveAndSlide();
 
 		float actualSpeed = new Vector2(Velocity.X, Velocity.Z).Length();
-		_tracker.ReportMovement(delta, actualSpeed, sprinting);
+		float forwardSpeed = Velocity.Dot(-GlobalTransform.Basis.Z);
+		_tracker.ReportMovement(delta, actualSpeed, sprinting, forwardSpeed);
 	}
 }

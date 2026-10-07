@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://1a5feh3jx6up"]
 
+[ext_resource type="PackedScene" uid="uid://ceisu5x1yjlhx" path="res://scenes/environment/Door.tscn" id="1_nha0i"]
 [ext_resource type="PackedScene" uid="uid://7vgw5ui7wwuv" path="res://scenes/player/Player.tscn" id="1_u1xfj"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_3mj47"]
@@ -78,6 +79,9 @@ mesh = SubResource("BoxMesh_0w6bn")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallEast" unique_id=545554270]
 shape = SubResource("BoxShape3D_nd423")
+
+[node name="Door" parent="Environment" unique_id=2038260737 instance=ExtResource("1_nha0i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -3)
 
 [node name="Player" parent="." unique_id=1013520684 instance=ExtResource("1_u1xfj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
