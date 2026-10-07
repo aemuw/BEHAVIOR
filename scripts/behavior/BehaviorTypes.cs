@@ -1,24 +1,37 @@
-//контекст: що сталося (після чого спостерігаємо реакцію гравця)
+//контекст: що відбулося перед прогнозом
 public enum BehaviorContext
 {
+	None,
+
 	DoorOpened,
 	DoorClosed,
+
+	ObjectInteracted,
+
+	RoomEntered,
+	RoomExited,
 }
 
-//наслідок: що гравець зробив у вікні спостереження після контексту
+//перша помітна дія гравця після контексту
 public enum BehaviorAction
 {
+	Idle,
+
+	MoveForward,
+	MoveBackward,
+	MoveLeft,
+	MoveRight,
+
 	LookLeft,
 	LookRight,
-	MoveForward,
-	MoveBack,
-	Idle,
+
+	TurnAround,
 }
 
-//прогноз моделі для контексту
-//Probability - ймовірність найімовірнішої дії (0..1)
-//Confidence - наскільки можна довіряти (росте з кількістю спостережень, 0..1)
-//Samples - скільки разів цей контекст уже спостерігали
+//результат прогнозу
+//Probability = наскільки ймовірна конкретна дія
+//Confidence = скільки даних ми маємо
+//Samples = кількість попередніх спостережень контексту
 public readonly record struct Prediction(
 	BehaviorAction Action,
 	float Probability,
