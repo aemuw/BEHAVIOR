@@ -90,115 +90,165 @@ public partial class BehaviorTracker : Node
 
 	private CanvasLayer _debugLayer;
 
-	private Label _leftDebugLabel;
-	private Label _rightDebugLabel;
-
+	private RichTextLabel _movementDebug;
+	private RichTextLabel _lookDebug;
+	private RichTextLabel _spatialDebug;
+	private RichTextLabel _interactionDebug;
+	private RichTextLabel _profileDebug;
+	private RichTextLabel _predictionDebug;
+	
 	public override void _Ready()
 	{
-		_debugLayer = new CanvasLayer
-		{
-			Visible = false
-		};
+		_debugLayer =
+			new CanvasLayer
+			{
+				Visible = false
+			};
 
-		PanelContainer panel = new PanelContainer
-		{
-			Position = new Vector2(18, 18),
-			Size = new Vector2(920, 565)
-		};
+		PanelContainer mainPanel =
+			new PanelContainer
+			{
+				Position =
+					new Vector2(18, 18),
 
-		_debugLayer.AddChild(panel);
+				Size =
+					new Vector2(960, 590)
+			};
 
-		MarginContainer margin = new MarginContainer();
+		_debugLayer.AddChild(
+			mainPanel
+		);
+
+		MarginContainer margin =
+			new MarginContainer();
 
 		margin.AddThemeConstantOverride(
 			"margin_left",
-			16
+			14
 		);
 
 		margin.AddThemeConstantOverride(
 			"margin_right",
-			16
+			14
 		);
 
 		margin.AddThemeConstantOverride(
 			"margin_top",
-			12
+			10
 		);
 
 		margin.AddThemeConstantOverride(
 			"margin_bottom",
-			12
+			10
 		);
 
-		panel.AddChild(margin);
+		mainPanel.AddChild(margin);
 
-		VBoxContainer root = new VBoxContainer();
+		VBoxContainer root =
+			new VBoxContainer();
 
 		margin.AddChild(root);
 
-		Label title = new Label
-		{
-			Text = "BEHAVIOR DEBUG"
-		};
+		HBoxContainer titleRow =
+			new HBoxContainer();
+
+		root.AddChild(titleRow);
+
+		Label title =
+			new Label
+			{
+				Text = "BEHAVIOR DEBUG"
+			};
 
 		title.AddThemeFontSizeOverride(
 			"font_size",
 			20
 		);
 
-		root.AddChild(title);
+		titleRow.AddChild(title);
 
-		HSeparator separator = new HSeparator();
+		Control spacer =
+			new Control
+			{
+				SizeFlagsHorizontal =
+					Control.SizeFlags.ExpandFill
+			};
 
-		root.AddChild(separator);
+		titleRow.AddChild(spacer);
 
-		HBoxContainer columns = new HBoxContainer
-		{
-			SizeFlagsVertical =
-				Control.SizeFlags.ExpandFill
-		};
+		Label hint =
+			new Label
+			{
+				Text = "F3 — toggle"
+			};
 
-		columns.AddThemeConstantOverride(
-			"separation",
-			30
+		titleRow.AddChild(hint);
+
+		root.AddChild(
+			new HSeparator()
 		);
 
-		root.AddChild(columns);
+		GridContainer grid =
+			new GridContainer
+			{
+				Columns = 2,
 
-		_leftDebugLabel = new Label
-		{
-			SizeFlagsHorizontal =
-				Control.SizeFlags.ExpandFill,
+				SizeFlagsVertical =
+					Control.SizeFlags.ExpandFill
+			};
 
-			AutowrapMode =
-				TextServer.AutowrapMode.WordSmart
-		};
-
-		_rightDebugLabel = new Label
-		{
-			SizeFlagsHorizontal =
-				Control.SizeFlags.ExpandFill,
-
-			AutowrapMode =
-				TextServer.AutowrapMode.WordSmart
-		};
-
-		_leftDebugLabel.AddThemeFontSizeOverride(
-			"font_size",
-			15
+		grid.AddThemeConstantOverride(
+			"h_separation",
+			10
 		);
 
-		_rightDebugLabel.AddThemeFontSizeOverride(
-			"font_size",
-			15
+		grid.AddThemeConstantOverride(
+			"v_separation",
+			10
 		);
 
-		columns.AddChild(
-			_leftDebugLabel
+		root.AddChild(grid);
+
+		grid.AddChild(
+			CreateDebugSection(
+				"MOVEMENT",
+				out _movementDebug
+			)
 		);
 
-		columns.AddChild(
-			_rightDebugLabel
+		grid.AddChild(
+			CreateDebugSection(
+				"LOOK",
+				out _lookDebug
+			)
+		);
+
+		grid.AddChild(
+			CreateDebugSection(
+				"SPATIAL",
+				out _spatialDebug
+			)
+		);
+
+		grid.AddChild(
+			CreateDebugSection(
+				"INTERACTION",
+				out _interactionDebug
+			)
+		);
+
+		grid.AddChild(
+			CreateDebugSection(
+				"BEHAVIOR PROFILE",
+				out _profileDebug
+			)
+		);
+
+		grid.AddChild(
+			CreateDebugSection(
+				"PREDICTION / MODEL",
+				out _predictionDebug
+			)
 		);
 
 		AddChild(_debugLayer);
@@ -486,16 +536,162 @@ public partial class BehaviorTracker : Node
 		);
 	}
 
+	private PanelContainer CreateDebugSection(
+		string title,
+		out RichTextLabel content)
+	{
+		PanelContainer panel =
+			new PanelContainer
+			{
+				CustomMinimumSize =
+					new Vector2(0, 145),
+
+				SizeFlagsHorizontal =
+					Control.SizeFlags.ExpandFill
+			};
+
+		VBoxContainer box =
+			new VBoxContainer();
+
+		box.AddThemeConstantOverride(
+			"separation",
+			4
+		);
+
+		panel.AddChild(box);
+
+		Label header =
+			new Label
+			{
+				Text = title
+			};
+
+		header.AddThemeFontSizeOverride(
+			"font_size",
+			16
+		);
+
+		box.AddChild(header);
+
+		HSeparator separator =
+			new HSeparator();
+
+		box.AddChild(separator);
+
+		ScrollContainer scroll =
+			new ScrollContainer
+			{
+				SizeFlagsVertical =
+					Control.SizeFlags.ExpandFill
+			};
+
+		box.AddChild(scroll);
+
+		content =
+			new RichTextLabel
+			{
+				BbcodeEnabled = true,
+
+				FitContent = true,
+
+				ScrollActive = false,
+
+				SizeFlagsHorizontal =
+					Control.SizeFlags.ExpandFill
+			};
+
+		content.AddThemeFontSizeOverride(
+			"normal_font_size",
+			14
+		);
+
+		scroll.AddChild(content);
+
+		return panel;
+	}
+
 	private void UpdateDebugText()
 	{
+		_movementDebug.Text =
+			$"[font_size=14]" +
+			$"Time: {TotalTime:F1}s\n\n" +
+
+			$"Walk:        {WalkTime:F1}s\n" +
+			$"Run:         {RunTime:F1}s\n" +
+			$"Stand still: {StandStillTime:F1}s\n" +
+			$"Distance:    {DistanceWalked:F1} m\n" +
+			$"Avg speed:   {Movement.AverageMovingSpeed:F2} m/s\n\n" +
+
+			$"Forward:     {Movement.ForwardDistance:F1} m\n" +
+			$"Backward:    {Movement.BackwardDistance:F1} m\n" +
+			$"Left:        {Movement.LeftDistance:F1} m\n" +
+			$"Right:       {Movement.RightDistance:F1} m\n" +
+			$"Reversals:   {Movement.DirectionReversalCount}\n" +
+			$"Sprint starts: {Movement.SprintStartCount}" +
+			$"[/font]";
+
+		_lookDebug.Text =
+			$"[font_size=14]" +
+			$"Yaw travel:   {Look.TotalYawTravel:F1} rad\n" +
+			$"Pitch travel: {Look.TotalPitchTravel:F1} rad\n" +
+			$"Large turns:  {Look.LargeTurnCount}\n\n" +
+
+			$"Left travel:  {Look.LeftYawTravel:F1}\n" +
+			$"Right travel: {Look.RightYawTravel:F1}" +
+			$"[/font]";
+
+		_spatialDebug.Text =
+			$"[font_size=14]" +
+			$"Unique cells:     {Spatial.UniqueCells}\n" +
+			$"Revisited cells:  {Spatial.RevisitedCells}\n" +
+			$"Backtrack events: {Spatial.BacktrackEvents}\n" +
+			$"Backtrack dist:   {Spatial.BacktrackDistance:F1} m\n\n" +
+
+			$"Novelty rate:     {Spatial.NoveltyRate:P0}\n" +
+			$"Revisit rate:     {Spatial.RevisitRate:P0}" +
+			$"[/font]";
+
+		_interactionDebug.Text =
+			$"[font_size=14]" +
+			$"Interactions:        {InteractionCount}\n" +
+			$"Doors:               {DoorInteractionCount}\n" +
+			$"Unique seen:         {Interactions.UniqueTargetsSeen}\n" +
+			$"Unique interacted:   {Interactions.UniqueTargetsInteracted}\n\n" +
+
+			$"Focus events:        {Interactions.FocusEvents}\n" +
+			$"Meaningful focus:    {Interactions.MeaningfulFocusEvents}\n" +
+			$"Deep focus:          {Interactions.DeepFocusEvents}\n" +
+			$"Ignored focus:       {Interactions.IgnoredFocusEvents}\n\n" +
+
+			$"Avg focus:            {Interactions.AverageFocusTime:F2}s\n" +
+			$"Max focus:            {Interactions.MaxFocusTime:F2}s\n" +
+			$"Avg hesitation:       {AverageHesitation:F2}s\n" +
+			$"Max hesitation:       {Interactions.MaxHesitation:F2}s" +
+			$"[/font]";
+
+		_profileDebug.Text =
+			$"[font_size=14]" +
+			$"Exploration:   {ExplorationTendency:P0}\n" +
+			$"Backtracking:  {BacktrackingTendency:P0}\n\n" +
+
+			$"Meaningful focus:\n" +
+			$"{Interactions.MeaningfulFocusRate:P0}\n\n" +
+
+			$"Deliberate ignore:\n" +
+			$"{Interactions.DeliberateIgnoreRate:P0}\n\n" +
+
+			$"Deep focus:\n" +
+			$"{Interactions.DeepFocusRate:P0}" +
+			$"[/font]";
+
 		string prediction =
 			_currentPrediction is Prediction p
 
-				? $"{_observationContext}\n" +
-				  $"Action: {p.Action}\n" +
-				  $"Probability: {p.Probability:P0}\n" +
-				  $"Confidence: {p.Confidence:P0}\n" +
-				  $"Samples: {p.Samples}"
+				? $"Context:      {_observationContext}\n" +
+				  $"Action:       {p.Action}\n" +
+				  $"Probability:  {p.Probability:P0}\n" +
+				  $"Confidence:   {p.Confidence:P0}\n" +
+				  $"Samples:      {p.Samples}"
 
 				: "No active prediction";
 
@@ -514,81 +710,23 @@ public partial class BehaviorTracker : Node
 
 		string observation =
 			_observing
-
-				? $"ACTIVE  " +
-				  $"{TotalTime - _observationStart:F2}s / " +
-				  $"{ObservationWindow:F1}s"
-
+				? $"ACTIVE ({TotalTime - _observationStart:F2}s / {ObservationWindow:F1}s)"
 				: "IDLE";
 
-		_leftDebugLabel.Text =
-			"TIME\n" +
-			$"Session: {TotalTime:F1}s\n\n" +
+		_predictionDebug.Text =
+			$"[font_size=14]" +
+			$"Observation: {observation}\n\n" +
 
-			"MOVEMENT\n" +
-			$"Walk time:        {WalkTime:F1}s\n" +
-			$"Run time:         {RunTime:F1}s\n" +
-			$"Stand still:      {StandStillTime:F1}s\n" +
-			$"Distance:         {DistanceWalked:F1} m\n" +
-			$"Average speed:    {Movement.AverageMovingSpeed:F2} m/s\n\n" +
-
-			"DIRECTIONAL MOVEMENT\n" +
-			$"Forward:          {Movement.ForwardDistance:F1} m\n" +
-			$"Backward:         {Movement.BackwardDistance:F1} m\n" +
-			$"Left:             {Movement.LeftDistance:F1} m\n" +
-			$"Right:            {Movement.RightDistance:F1} m\n" +
-			$"Direction flips:  {Movement.DirectionReversalCount}\n" +
-			$"Sprint starts:    {Movement.SprintStartCount}\n\n" +
-
-			"SPATIAL\n" +
-			$"Unique cells:     {Spatial.UniqueCells}\n" +
-			$"Revisited:        {Spatial.RevisitedCells}\n" +
-			$"Backtrack events: {Spatial.BacktrackEvents}\n" +
-			$"Backtrack dist:   {Spatial.BacktrackDistance:F1} m\n" +
-			$"Novelty rate:     {Spatial.NoveltyRate:P0}\n" +
-			$"Revisit rate:     {Spatial.RevisitRate:P0}\n";
-
-		_rightDebugLabel.Text =
-			"LOOK\n" +
-			$"Yaw travel:       {Look.TotalYawTravel:F1} rad\n" +
-			$"Pitch travel:     {Look.TotalPitchTravel:F1} rad\n" +
-			$"Large turns:      {Look.LargeTurnCount}\n\n" +
-
-			"INTERACTION\n" +
-			$"Interactions:        {InteractionCount}\n" +
-			$"Doors:               {DoorInteractionCount}\n" +
-			$"Unique seen:         {Interactions.UniqueTargetsSeen}\n" +
-			$"Unique interacted:   {Interactions.UniqueTargetsInteracted}\n" +
-			$"Focus events:        {Interactions.FocusEvents}\n" +
-			$"Meaningful focus:    {Interactions.MeaningfulFocusEvents}\n" +
-			$"Deep focus:          {Interactions.DeepFocusEvents}\n" +
-			$"Ignored focus:       {Interactions.IgnoredFocusEvents}\n" +
-			$"Focus time total:    {Interactions.TotalFocusTime:F1}s\n" +
-			$"Focus time avg:      {Interactions.AverageFocusTime:F2}s\n" +
-			$"Focus time max:      {Interactions.MaxFocusTime:F2}s\n" +
-			$"Meaningful rate:     {Interactions.MeaningfulFocusRate:P0}\n" +
-			$"Ignore rate:         {Interactions.DeliberateIgnoreRate:P0}\n" +
-			$"Deep focus rate:     {Interactions.DeepFocusRate:P0}\n" +
-			$"Last hesitation:     {LastHesitation:F2}s\n" +
-			$"Average hesitation:  {AverageHesitation:F2}s\n" +
-			$"Max hesitation:      {Interactions.MaxHesitation:F2}s\n" +
-			$"Quick interactions:  {Interactions.QuickInteractionCount}\n" +
-			$"Long hesitation:     {Interactions.LongHesitationCount}\n\n" +
-
-			"BEHAVIOR PROFILE\n" +
-			$"Exploration:      {ExplorationTendency:P0}\n" +
-			$"Backtracking:     {BacktrackingTendency:P0}\n\n" +
-
-			"PREDICTION\n" +
 			$"{prediction}\n\n" +
-			$"Observed:         {observed}\n" +
-			$"Result:           {result}\n" +
-			$"Reaction time:    {LastReactionTime:F2}s\n\n" +
 
-			"MODEL\n" +
-			$"Predictability:   {Model.Predictability:P0}\n" +
-			$"Recent accuracy:  {Model.RecentPredictability:P0}\n" +
-			$"Above chance:     {Model.PredictabilityAboveChance:P0}\n" +
-			$"Brier score:      {Model.LastBrierScore:F3}";
+			$"Observed:       {observed}\n" +
+			$"Result:         {result}\n" +
+			$"Reaction time:  {LastReactionTime:F2}s\n\n" +
+
+			$"Predictability: {Model.Predictability:P0}\n" +
+			$"Recent:         {Model.RecentPredictability:P0}\n" +
+			$"Above chance:   {Model.PredictabilityAboveChance:P0}\n" +
+			$"Brier:          {Model.LastBrierScore:F3}" +
+			$"[/font]";
 	}
 }
