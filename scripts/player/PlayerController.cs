@@ -165,7 +165,8 @@ public partial class PlayerController : CharacterBody3D
 			actualSpeed,
 			sprinting,
 			forwardSpeed,
-			lateralSpeed
+			lateralSpeed,
+			GlobalPosition
 		);
 	}
 }

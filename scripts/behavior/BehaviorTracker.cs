@@ -12,8 +12,12 @@ public partial class BehaviorTracker : Node
 	public double TotalTime { get; private set; }
 
 	public MovementBehaviorTracker Movement { get; } = new();
+
 	public LookBehaviorTracker Look { get; } = new();
+
 	public InteractionBehaviorTracker Interactions { get; } = new();
+
+	public SpatialBehaviorTracker Spatial { get; } = new();
 
 	public BehaviorModel Model { get; } = new();
 
@@ -38,6 +42,12 @@ public partial class BehaviorTracker : Node
 	public int DoorInteractionCount =>
 		Interactions.DoorInteractionCount;
 
+	public float ExplorationTendency =>
+		Spatial.ExplorationTendency;
+
+	public float BacktrackingTendency =>
+		Spatial.BacktrackingTendency;
+	
 	public double LastHesitation =>
 		Interactions.LastHesitation;
 
@@ -79,36 +89,119 @@ public partial class BehaviorTracker : Node
 	private bool _observationActionDetected;
 
 	private CanvasLayer _debugLayer;
-	private Label _debugLabel;
+
+	private Label _leftDebugLabel;
+	private Label _rightDebugLabel;
 
 	public override void _Ready()
 	{
-		_debugLayer =
-			new CanvasLayer
-			{
-				Visible = false
-			};
+		_debugLayer = new CanvasLayer
+		{
+			Visible = false
+		};
 
-		_debugLabel =
-			new Label
-			{
-				Position = new Vector2(
-					12,
-					12
-				),
-				Size = new Vector2(
-					620,
-					500
-				)
-			};
+		PanelContainer panel = new PanelContainer
+		{
+			Position = new Vector2(18, 18),
+			Size = new Vector2(920, 565)
+		};
 
-		_debugLayer.AddChild(
-			_debugLabel
+		_debugLayer.AddChild(panel);
+
+		MarginContainer margin = new MarginContainer();
+
+		margin.AddThemeConstantOverride(
+			"margin_left",
+			16
 		);
 
-		AddChild(
-			_debugLayer
+		margin.AddThemeConstantOverride(
+			"margin_right",
+			16
 		);
+
+		margin.AddThemeConstantOverride(
+			"margin_top",
+			12
+		);
+
+		margin.AddThemeConstantOverride(
+			"margin_bottom",
+			12
+		);
+
+		panel.AddChild(margin);
+
+		VBoxContainer root = new VBoxContainer();
+
+		margin.AddChild(root);
+
+		Label title = new Label
+		{
+			Text = "BEHAVIOR DEBUG"
+		};
+
+		title.AddThemeFontSizeOverride(
+			"font_size",
+			20
+		);
+
+		root.AddChild(title);
+
+		HSeparator separator = new HSeparator();
+
+		root.AddChild(separator);
+
+		HBoxContainer columns = new HBoxContainer
+		{
+			SizeFlagsVertical =
+				Control.SizeFlags.ExpandFill
+		};
+
+		columns.AddThemeConstantOverride(
+			"separation",
+			30
+		);
+
+		root.AddChild(columns);
+
+		_leftDebugLabel = new Label
+		{
+			SizeFlagsHorizontal =
+				Control.SizeFlags.ExpandFill,
+
+			AutowrapMode =
+				TextServer.AutowrapMode.WordSmart
+		};
+
+		_rightDebugLabel = new Label
+		{
+			SizeFlagsHorizontal =
+				Control.SizeFlags.ExpandFill,
+
+			AutowrapMode =
+				TextServer.AutowrapMode.WordSmart
+		};
+
+		_leftDebugLabel.AddThemeFontSizeOverride(
+			"font_size",
+			15
+		);
+
+		_rightDebugLabel.AddThemeFontSizeOverride(
+			"font_size",
+			15
+		);
+
+		columns.AddChild(
+			_leftDebugLabel
+		);
+
+		columns.AddChild(
+			_rightDebugLabel
+		);
+
+		AddChild(_debugLayer);
 	}
 
 	public override void _UnhandledInput(
@@ -203,8 +296,11 @@ public partial class BehaviorTracker : Node
 		float speed,
 		bool sprinting,
 		float forwardSpeed,
-		float lateralSpeed)
+		float lateralSpeed,
+		Vector3 worldPosition)
 	{
+		Spatial.Update(worldPosition);
+
 		Movement.Update(
 			delta,
 			speed,
@@ -395,12 +491,13 @@ public partial class BehaviorTracker : Node
 		string prediction =
 			_currentPrediction is Prediction p
 
-				? $"{_observationContext} -> {p.Action} | " +
-				  $"P={p.Probability:P0} | " +
-				  $"C={p.Confidence:P0} | " +
-				  $"N={p.Samples}"
+				? $"{_observationContext}\n" +
+				  $"Action: {p.Action}\n" +
+				  $"Probability: {p.Probability:P0}\n" +
+				  $"Confidence: {p.Confidence:P0}\n" +
+				  $"Samples: {p.Samples}"
 
-				: "-";
+				: "No active prediction";
 
 		string observed =
 			_lastObservedAction?.ToString()
@@ -418,94 +515,68 @@ public partial class BehaviorTracker : Node
 		string observation =
 			_observing
 
-				? $"OBSERVING " +
-				  $"({TotalTime - _observationStart:F2}s / " +
-				  $"{ObservationWindow:F1}s)"
+				? $"ACTIVE  " +
+				  $"{TotalTime - _observationStart:F2}s / " +
+				  $"{ObservationWindow:F1}s"
 
-				: "idle";
+				: "IDLE";
 
-		_debugLabel.Text =
-			$"BEHAVIOR DEBUG\n\n" +
+		_leftDebugLabel.Text =
+			"TIME\n" +
+			$"Session: {TotalTime:F1}s\n\n" +
 
-			$"Time: {TotalTime:F1}s\n" +
+			"MOVEMENT\n" +
+			$"Walk time:        {WalkTime:F1}s\n" +
+			$"Run time:         {RunTime:F1}s\n" +
+			$"Stand still:      {StandStillTime:F1}s\n" +
+			$"Distance:         {DistanceWalked:F1} m\n" +
+			$"Average speed:    {Movement.AverageMovingSpeed:F2} m/s\n\n" +
 
-			$"Walk: {WalkTime:F1}s   " +
-			$"Run: {RunTime:F1}s   " +
-			$"Stand: {StandStillTime:F1}s\n" +
+			"DIRECTIONAL MOVEMENT\n" +
+			$"Forward:          {Movement.ForwardDistance:F1} m\n" +
+			$"Backward:         {Movement.BackwardDistance:F1} m\n" +
+			$"Left:             {Movement.LeftDistance:F1} m\n" +
+			$"Right:            {Movement.RightDistance:F1} m\n" +
+			$"Direction flips:  {Movement.DirectionReversalCount}\n" +
+			$"Sprint starts:    {Movement.SprintStartCount}\n\n" +
 
-			$"Distance: {DistanceWalked:F1}m   " +
-			$"Avg speed: " +
-			$"{Movement.AverageMovingSpeed:F2} m/s\n" +
+			"SPATIAL\n" +
+			$"Unique cells:     {Spatial.UniqueCells}\n" +
+			$"Revisited:        {Spatial.RevisitedCells}\n" +
+			$"Backtrack events: {Spatial.BacktrackEvents}\n" +
+			$"Backtrack dist:   {Spatial.BacktrackDistance:F1} m\n" +
+			$"Novelty rate:     {Spatial.NoveltyRate:P0}\n" +
+			$"Revisit rate:     {Spatial.RevisitRate:P0}\n";
 
-			$"Forward: {Movement.ForwardDistance:F1}m   " +
-			$"Back: {Movement.BackwardDistance:F1}m\n" +
+		_rightDebugLabel.Text =
+			"LOOK\n" +
+			$"Yaw travel:       {Look.TotalYawTravel:F1} rad\n" +
+			$"Pitch travel:     {Look.TotalPitchTravel:F1} rad\n" +
+			$"Large turns:      {Look.LargeTurnCount}\n\n" +
 
-			$"Left: {Movement.LeftDistance:F1}m   " +
-			$"Right: {Movement.RightDistance:F1}m\n" +
+			"INTERACTION\n" +
+			$"Interactions:     {InteractionCount}\n" +
+			$"Doors:            {DoorInteractionCount}\n" +
+			$"Last hesitation:  {LastHesitation:F2}s\n" +
+			$"Average hesitation: {AverageHesitation:F2}s\n" +
+			$"Max hesitation:   {Interactions.MaxHesitation:F2}s\n" +
+			$"Quick:            {Interactions.QuickInteractionCount}\n" +
+			$"Long:             {Interactions.LongHesitationCount}\n\n" +
 
-			$"Direction reversals: " +
-			$"{Movement.DirectionReversalCount}\n" +
+			"BEHAVIOR PROFILE\n" +
+			$"Exploration:      {ExplorationTendency:P0}\n" +
+			$"Backtracking:     {BacktrackingTendency:P0}\n\n" +
 
-			$"Sprint starts: " +
-			$"{Movement.SprintStartCount}\n\n" +
+			"PREDICTION\n" +
+			$"{prediction}\n\n" +
+			$"Observed:         {observed}\n" +
+			$"Result:           {result}\n" +
+			$"Reaction time:    {LastReactionTime:F2}s\n\n" +
 
-			$"Yaw travel: " +
-			$"{Look.TotalYawTravel:F1} rad   " +
-
-			$"Pitch travel: " +
-			$"{Look.TotalPitchTravel:F1} rad\n" +
-
-			$"Large turns: " +
-			$"{Look.LargeTurnCount}\n\n" +
-
-			$"Interactions: " +
-			$"{InteractionCount}   " +
-
-			$"Doors: " +
-			$"{DoorInteractionCount}\n" +
-
-			$"Hesitation: last " +
-			$"{LastHesitation:F2}s | " +
-
-			$"avg " +
-			$"{AverageHesitation:F2}s | " +
-
-			$"max " +
-			$"{Interactions.MaxHesitation:F2}s\n" +
-
-			$"Quick: " +
-			$"{Interactions.QuickInteractionCount}   " +
-
-			$"Long: " +
-			$"{Interactions.LongHesitationCount}\n\n" +
-
-			$"Observation: " +
-			$"{observation}\n" +
-
-			$"Prediction: " +
-			$"{prediction}\n" +
-
-			$"Observed: " +
-			$"{observed}   " +
-
-			$"Result: " +
-			$"{result}\n" +
-
-			$"Reaction: " +
-			$"{LastReactionTime:F2}s\n" +
-
-			$"Predictability: " +
-			$"{Model.Predictability:P0} " +
-			$"({Model.Hits}/" +
-			$"{Model.Evaluations})\n" +
-
-			$"Recent: " +
-			$"{Model.RecentPredictability:P0}\n" +
-
-			$"Above chance: " +
-			$"{Model.PredictabilityAboveChance:P0}\n" +
-
-			$"Brier: " +
-			$"{Model.LastBrierScore:F3}";
+			"MODEL\n" +
+			$"Predictability:   {Model.Predictability:P0}\n" +
+			$"Recent accuracy:  {Model.RecentPredictability:P0}\n" +
+			$"Above chance:     {Model.PredictabilityAboveChance:P0}\n" +
+			$"Brier score:      {Model.LastBrierScore:F3}";
 	}
 }
