@@ -1,23 +1,28 @@
 using System.Collections.Generic;
-using Godot;
 using System.Linq;
+using Godot;
 
+//Director вирішує, чи варто запускати подію, коли завершилось спостереження.
+//Події бувають двох типів: ті, що потребують серії влучних прогнозів моделі,
+//і "фонові" (наприклад, зсув предмета), яким достатньо контексту.
 public partial class BehaviorDirector : Node
 {
 	private const int RequiredConsecutiveHits = 2;
 
-	private const double GlobalEventCooldown = 8.0;
+	private const double GlobalEventCooldown = 12.0;
 
 	private readonly List<BehaviorEvent> _events = new()
-		{
-			new AdaptiveDoorCloseEvent(),
-			new AdaptiveLightFlickerEvent()
-		};
+	{
+		new AdaptiveDoorCloseEvent(),
+		new ObjectShiftEvent(),
+		new AdaptiveLightFlickerEvent()
+	};
 
-	private readonly Dictionary<
-		BehaviorContext,
-		int
-	> _hitStreaks = new();
+	private readonly Dictionary<BehaviorContext, int> _hitStreaks = new();
+
+	private readonly Dictionary<string, double> _lastRunById = new();
+
+	private readonly RandomNumberGenerator _rng = new();
 
 	private BehaviorTracker _tracker;
 
@@ -47,6 +52,8 @@ public partial class BehaviorDirector : Node
 
 	public override void _Ready()
 	{
+		_rng.Randomize();
+
 		_tracker =
 			GetNode<BehaviorTracker>(
 				"/root/BehaviorTracker"
@@ -79,67 +86,81 @@ public partial class BehaviorDirector : Node
 	private void OnObservationCompleted(
 		BehaviorObservationResult result)
 	{
-		LastContext =
-			result.Context;
-
-		LastActualAction =
-			result.ActualAction;
-
+		LastContext = result.Context;
+		LastActualAction = result.ActualAction;
 		LastPredictedAction =
 			result.Prediction?.Action
 			?? BehaviorAction.Idle;
 
-		UpdatePredictionStreak(
-			result
-		);
+		UpdatePredictionStreak(result);
 
-		if (!result.WasEvaluated)
+		bool hit =
+			result.WasEvaluated &&
+			result.WasHit;
+
+		bool streakReady =
+			GetHitStreak(result.Context) >=
+			RequiredConsecutiveHits;
+
+		string baseDecision =
+			!result.WasEvaluated
+				? "NO EVALUATION"
+				: hit
+					? "HIT"
+					: "MISS";
+
+		string baseReason =
+			!result.WasEvaluated
+				? "Not enough samples"
+				: hit
+					? $"Streak {GetHitStreak(result.Context)}/{RequiredConsecutiveHits}"
+					: $"Expected {result.Prediction?.Action}, got {result.ActualAction}";
+
+		double sinceLastEvent =
+			_tracker.TotalTime - _lastEventTime;
+
+		if (sinceLastEvent < GlobalEventCooldown)
 		{
-			LastDecision =
-				"NO EVALUATION";
+			LastDecision = $"{baseDecision} / COOLDOWN";
 
 			LastDecisionReason =
-				"Not enough samples";
+				$"Global cooldown {GlobalEventCooldown - sinceLastEvent:F1}s";
 
 			return;
 		}
 
-		if (!result.WasHit)
+		string reason = baseReason;
+
+		foreach (BehaviorEvent behaviorEvent in
+			_events.OrderByDescending(e => e.Priority))
 		{
-			LastDecision =
-				"MISS";
+			if (behaviorEvent.RequiresPredictionHit &&
+				!(hit && streakReady))
+			{
+				continue;
+			}
 
-			LastDecisionReason =
-				$"Expected {result.Prediction?.Action}, " +
-				$"got {result.ActualAction}";
+			if (_lastRunById.TryGetValue(
+					behaviorEvent.Id,
+					out double lastRun) &&
+				_tracker.TotalTime - lastRun <
+				behaviorEvent.Cooldown)
+			{
+				reason = $"{behaviorEvent.Id}: own cooldown";
+				continue;
+			}
 
-			return;
-		}
-
-		if (!CanTriggerEvent(
-				result.Context))
-		{
-			LastDecision =
-				"HIT / NO EVENT";
-
-			LastDecisionReason =
-				BuildCooldownReason(
-					result.Context
-				);
-
-			return;
-		}
-
-		foreach (BehaviorEvent behaviorEvent
-			 in _events
-				 .OrderByDescending(
-					 e => e.Priority
-				 ))
-		{
 			if (!behaviorEvent.CanExecute(
 					result,
 					_tracker))
 			{
+				continue;
+			}
+
+			//навмисна випадковість: не кожного разу, коли умови виконані
+			if (_rng.Randf() > behaviorEvent.Chance)
+			{
+				reason = $"{behaviorEvent.Id}: skipped by chance";
 				continue;
 			}
 
@@ -150,28 +171,33 @@ public partial class BehaviorDirector : Node
 
 			EventsTriggered++;
 
-			LastEventId =
-				behaviorEvent.Id;
+			LastEventId = behaviorEvent.Id;
 
-			_lastEventTime =
-				_tracker.TotalTime;
+			_lastEventTime = _tracker.TotalTime;
 
-			LastDecision =
-				"EVENT TRIGGERED";
+			_lastRunById[behaviorEvent.Id] = _tracker.TotalTime;
 
-			LastDecisionReason =
-				behaviorEvent.Id;
+			LastDecision = "EVENT TRIGGERED";
 
-			_hitStreaks[result.Context] = 0;
+			LastDecisionReason = behaviorEvent.Id;
+
+			if (behaviorEvent.RequiresPredictionHit)
+			{
+				_hitStreaks[result.Context] = 0;
+			}
+
+			_tracker.SessionLog.RecordEvent(
+				_tracker.TotalTime,
+				behaviorEvent.Id,
+				$"{result.Context}: predicted {result.Prediction?.Action}, actual {result.ActualAction}"
+			);
 
 			return;
 		}
 
-		LastDecision =
-			"HIT / EVENT BLOCKED";
+		LastDecision = $"{baseDecision} / NO EVENT";
 
-		LastDecisionReason =
-			"BehaviorEvent conditions not satisfied";
+		LastDecisionReason = reason;
 	}
 
 	private void UpdatePredictionStreak(
@@ -193,67 +219,12 @@ public partial class BehaviorDirector : Node
 		}
 
 		int streak =
-			GetHitStreak(context);
-
-		streak++;
-
-		if (streak >
-			RequiredConsecutiveHits)
-		{
-			streak =
-				RequiredConsecutiveHits;
-		}
+			GetHitStreak(context) + 1;
 
 		_hitStreaks[context] =
-			streak;
-	}
-
-	private bool CanTriggerEvent(
-		BehaviorContext context)
-	{
-		if (GetHitStreak(context) <
-			RequiredConsecutiveHits)
-		{
-			return false;
-		}
-
-		if (_tracker.TotalTime -
-			_lastEventTime <
-			GlobalEventCooldown)
-		{
-			return false;
-		}
-
-		return true;
-	}
-
-	private string BuildCooldownReason(
-		BehaviorContext context)
-	{
-		int streak =
-			GetHitStreak(context);
-
-		if (streak <
-			RequiredConsecutiveHits)
-		{
-			return
-				$"Streak {streak}/" +
-				$"{RequiredConsecutiveHits}";
-		}
-
-		double remaining =
-			GlobalEventCooldown -
-			(
-				_tracker.TotalTime -
-				_lastEventTime
+			Mathf.Min(
+				streak,
+				RequiredConsecutiveHits
 			);
-
-		if (remaining > 0.0)
-		{
-			return
-				$"Cooldown {remaining:F1}s";
-		}
-
-		return "No event matched";
 	}
 }

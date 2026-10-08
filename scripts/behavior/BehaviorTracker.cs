@@ -23,6 +23,10 @@ public partial class BehaviorTracker : Node
 	public BehaviorModel Model { get; } = new();
 	
 	public BehaviorProfile Profile { get; } = new();
+
+	public RoomBehaviorTracker Rooms { get; } = new();
+
+	public BehaviorSessionLog SessionLog { get; } = new();
 	
 	public event Action<BehaviorObservationResult>
 		ObservationCompleted;
@@ -93,6 +97,9 @@ public partial class BehaviorTracker : Node
 	private float _observationRight;
 
 	private bool _observationActionDetected;
+
+	//для RoomEntered ігноруємо рух (інерція входу), дивимось лише на погляд
+	private bool _observationLookOnly;
 
 	private CanvasLayer _debugLayer;
 
@@ -263,15 +270,29 @@ public partial class BehaviorTracker : Node
 	public override void _UnhandledInput(
 		InputEvent @event)
 	{
-		if (@event is InputEventKey
-			{
-				Pressed: true,
-				Echo: false,
-				Keycode: Key.F3
-			})
+		if (@event is InputEventKey key &&
+			key.Pressed &&
+			!key.Echo)
 		{
-			_debugLayer.Visible =
-				!_debugLayer.Visible;
+			if (key.Keycode == Key.F3)
+			{
+				_debugLayer.Visible =
+					!_debugLayer.Visible;
+			}
+			else if (key.Keycode == Key.F4)
+			{
+				SessionLog.Save(this);
+			}
+		}
+	}
+
+	//автозбереження логу сесії при закритті вікна гри
+	public override void _Notification(int what)
+	{
+		if (what == NotificationWMCloseRequest &&
+			TotalTime > 5.0)
+		{
+			SessionLog.Save(this);
 		}
 	}
 
@@ -282,12 +303,15 @@ public partial class BehaviorTracker : Node
 
 		Look.Update(delta);
 
+		Rooms.Update(delta);
+
 		Profile.Recalculate(
 			Movement,
 			Look,
 			Spatial,
 			Interactions,
-			Model
+			Model,
+			Rooms
 		);
 
 		if (_observing &&
@@ -375,7 +399,8 @@ public partial class BehaviorTracker : Node
 
 		if (!_observing ||
 			_observationActionDetected ||
-			speed < ObservationMoveThreshold)
+			speed < ObservationMoveThreshold ||
+			_observationLookOnly)
 		{
 			return;
 		}
@@ -496,14 +521,11 @@ public partial class BehaviorTracker : Node
 			return;
 		}
 
-		if (_observing &&
-			!_observationActionDetected)
+		//перерване спостереження не є реакцією гравця,
+		//тому не віддаємо його моделі
+		if (_observing)
 		{
-			CompleteObservation(
-				BehaviorAction.Idle,
-				TotalTime -
-				_observationStart
-			);
+			DiscardObservation();
 		}
 
 		_observationContext =
@@ -526,7 +548,52 @@ public partial class BehaviorTracker : Node
 		_observationActionDetected =
 			false;
 
+		_observationLookOnly =
+			context == BehaviorContext.RoomEntered;
+
 		_observing = true;
+	}
+
+	public void ReportObjectInteraction()
+	{
+		BeginObservation(
+			BehaviorContext.ObjectInteracted
+		);
+	}
+
+	public void ReportRoomEntered(
+		string roomId,
+		bool isDark)
+	{
+		bool counted =
+			Rooms.ReportEnter(
+				roomId,
+				isDark,
+				TotalTime
+			);
+
+		//перший вхід на старті гри (спавн) не рахуємо як реакцію
+		if (counted && TotalTime > 1.0)
+		{
+			BeginObservation(
+				BehaviorContext.RoomEntered
+			);
+		}
+	}
+
+	public void ReportRoomExited(
+		string roomId)
+	{
+		Rooms.ReportExit(
+			roomId,
+			TotalTime
+		);
+	}
+
+	private void DiscardObservation()
+	{
+		_observing = false;
+		_observationActionDetected = true;
 	}
 
 	private void CompleteObservation(
@@ -560,7 +627,8 @@ public partial class BehaviorTracker : Node
 
 		bool wasEvaluated =
 			prediction.HasValue &&
-			prediction.Value.Samples >= 3;
+			prediction.Value.Samples >=
+			BehaviorModel.MinSamplesForEvaluation;
 
 		bool wasHit =
 			wasEvaluated &&
@@ -569,6 +637,16 @@ public partial class BehaviorTracker : Node
 		Model.Observe(
 			_observationContext,
 			action
+		);
+
+		SessionLog.RecordObservation(
+			TotalTime,
+			_observationContext,
+			action,
+			prediction,
+			wasEvaluated,
+			wasHit,
+			LastReactionTime
 		);
 
 		ObservationCompleted?.Invoke(
@@ -699,7 +777,12 @@ public partial class BehaviorTracker : Node
 			$"Backtrack dist:   {Spatial.BacktrackDistance:F1} m\n\n" +
 
 			$"Novelty rate:     {Spatial.NoveltyRate:P0}\n" +
-			$"Revisit rate:     {Spatial.RevisitRate:P0}" +
+			$"Revisit rate:     {Spatial.RevisitRate:P0}\n\n" +
+
+			$"Room:       {Rooms.CurrentRoomLabel}\n" +
+			$"Entries:    {Rooms.RoomEntries} (dark {Rooms.DarkEntries})\n" +
+			$"Returns:    {Rooms.ReturnVisits}\n" +
+			$"Dark time:  {Rooms.DarkTime:F1}s / lit {Rooms.LitTime:F1}s" +
 			$"[/font]";
 
 		_interactionDebug.Text =
@@ -742,6 +825,10 @@ public partial class BehaviorTracker : Node
 			$"HESITATION\n" +
 			$"Value:      {Profile.Hesitation.Value:P0}\n" +
 			$"Confidence: {Profile.Hesitation.Confidence:P0}\n\n" +
+
+			$"DARK AVOIDANCE\n" +
+			$"Value:      {Profile.DarkAvoidance.Value:P0}\n" +
+			$"Confidence: {Profile.DarkAvoidance.Confidence:P0}\n\n" +
 
 			$"Overall confidence: " +
 			$"{Profile.OverallConfidence:P0}" +
@@ -797,7 +884,9 @@ public partial class BehaviorTracker : Node
 			$"Reason:           {director.LastDecisionReason}\n" +
 			$"Context streak:   {director.ConsecutiveHits}\n" +
 			$"Events triggered: {director.EventsTriggered}\n" +
-			$"Last event:       {director.LastEventId}" +
+			$"Last event:       {director.LastEventId}\n\n" +
+			$"F4 = save session log\n" +
+			$"{SessionLog.LastSavePath}" +
 			$"[/font]";
 	}
 }

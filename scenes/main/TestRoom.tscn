@@ -1,0 +1,105 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://ceisu5x1yjlhx" path="res://scenes/environment/Door.tscn" id="1_nha0i"]
+[ext_resource type="PackedScene" uid="uid://7vgw5ui7wwuv" path="res://scenes/player/Player.tscn" id="1_u1xfj"]
+[ext_resource type="Script" uid="uid://d2jpf53s7lac2" path="res://scripts/environment/AdaptiveLight.cs" id="3_q24mn"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_3mj47"]
+size = Vector3(12, 0.2, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_uvo27"]
+size = Vector3(12, 0.2, 12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_0w6bn"]
+size = Vector3(0.2, 3, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_nd423"]
+size = Vector3(0.2, 3, 12)
+
+[sub_resource type="Environment" id="Environment_sijt7"]
+background_mode = 1
+background_color = Color(0.0627451, 0.06666667, 0.078431375, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.1882353, 0.2, 0.22745098, 1)
+ambient_light_energy = 0.25
+
+[node name="Main" type="Node3D" unique_id=521974149]
+
+[node name="Environment" type="Node3D" parent="." unique_id=1357960631]
+
+[node name="Floor" type="StaticBody3D" parent="Environment" unique_id=940045184]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Floor" unique_id=1096920561]
+mesh = SubResource("BoxMesh_3mj47")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Floor" unique_id=1163711182]
+shape = SubResource("BoxShape3D_uvo27")
+
+[node name="Ceiling" type="StaticBody3D" parent="Environment" unique_id=844243216]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.1, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Ceiling" unique_id=1607033939]
+mesh = SubResource("BoxMesh_3mj47")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Ceiling" unique_id=1813684869]
+shape = SubResource("BoxShape3D_uvo27")
+
+[node name="WallNorth" type="StaticBody3D" parent="Environment" unique_id=768196662]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0, 1.5, -6)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallNorth" unique_id=1276520989]
+mesh = SubResource("BoxMesh_0w6bn")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallNorth" unique_id=1840360722]
+shape = SubResource("BoxShape3D_nd423")
+
+[node name="WallSouth" type="StaticBody3D" parent="Environment" unique_id=415683790]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0, 1.5, 6)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallSouth" unique_id=178107053]
+mesh = SubResource("BoxMesh_0w6bn")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallSouth" unique_id=262995260]
+shape = SubResource("BoxShape3D_nd423")
+
+[node name="WallWest" type="StaticBody3D" parent="Environment" unique_id=327123031]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.5, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallWest" unique_id=2042279152]
+mesh = SubResource("BoxMesh_0w6bn")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallWest" unique_id=1099782178]
+shape = SubResource("BoxShape3D_nd423")
+
+[node name="WallEast" type="StaticBody3D" parent="Environment" unique_id=514614891]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallEast" unique_id=1732868521]
+mesh = SubResource("BoxMesh_0w6bn")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallEast" unique_id=545554270]
+shape = SubResource("BoxShape3D_nd423")
+
+[node name="Door" parent="Environment" unique_id=2038260737 instance=ExtResource("1_nha0i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -3)
+
+[node name="Player" parent="." unique_id=1013520684 instance=ExtResource("1_u1xfj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=440905188]
+transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.70710677, 0.5, -0.6123724, 0.6123724, 0, 5, 0)
+visible = false
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1424793213]
+environment = SubResource("Environment_sijt7")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1094969522 groups=["behavior_adaptive_light"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+shadow_enabled = true
+omni_range = 10.0
+script = ExtResource("3_q24mn")
+FlickerMinEnergy = 0.02
+FlickerDuration = 0.7

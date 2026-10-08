@@ -19,6 +19,9 @@ public sealed class BehaviorProfile
 
 	public BehaviorMetric Hesitation { get; private set; }
 
+	//наскільки гравець уникає темних кімнат (0..1)
+	public BehaviorMetric DarkAvoidance { get; private set; }
+
 	public float OverallConfidence
 	{
 		get
@@ -29,9 +32,10 @@ public sealed class BehaviorProfile
 				Avoidance.Confidence +
 				Repetition.Confidence +
 				Predictability.Confidence +
-				Hesitation.Confidence;
+				Hesitation.Confidence +
+				DarkAvoidance.Confidence;
 
-			return total / 6.0f;
+			return total / 7.0f;
 		}
 	}
 
@@ -40,7 +44,8 @@ public sealed class BehaviorProfile
 		LookBehaviorTracker look,
 		SpatialBehaviorTracker spatial,
 		InteractionBehaviorTracker interactions,
-		BehaviorModel model)
+		BehaviorModel model,
+		RoomBehaviorTracker rooms)
 	{
 		Exploration =
 			new BehaviorMetric(
@@ -87,6 +92,15 @@ public sealed class BehaviorProfile
 				CalculateHesitation(interactions),
 				CalculateInteractionConfidence(
 					interactions
+				)
+			);
+
+		DarkAvoidance =
+			new BehaviorMetric(
+				rooms.DarkAvoidance,
+				ConfidenceFromSamples(
+					rooms.UniqueRoomsVisited,
+					3.0f
 				)
 			);
 	}

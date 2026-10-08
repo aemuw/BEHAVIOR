@@ -151,14 +151,6 @@ public partial class InteractionSystem : Node3D
 		_tracker.ReportInteraction(
 			hesitation
 		);
-		
-		_tracker.BeginObservation(
-			BehaviorContext.ObjectInteracted
-		);
-
-		_tracker.BeginObservation(
-			BehaviorContext.ObjectInteracted
-		);
 
 		_tracker.Interactions
 			.ReportFocusEnded(

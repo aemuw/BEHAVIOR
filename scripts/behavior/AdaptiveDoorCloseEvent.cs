@@ -16,6 +16,12 @@ public sealed class AdaptiveDoorCloseEvent : BehaviorEvent
 	public override string Id =>
 		"adaptive_door_close";
 
+	public override float Chance =>
+		0.70f;
+
+	public override double Cooldown =>
+		30.0;
+
 	public override bool CanExecute(
 		BehaviorObservationResult result,
 		BehaviorTracker tracker)

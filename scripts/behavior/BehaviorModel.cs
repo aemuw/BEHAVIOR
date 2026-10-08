@@ -7,7 +7,7 @@ using Godot;
 //вона не запускає horror-події
 public sealed class BehaviorModel
 {
-	private const int MinSamplesForEvaluation = 3;
+	public const int MinSamplesForEvaluation = 3;
 
 	//наскільки сильно глобальна поведінка допомагає конкретному контексту
 	private const float PriorStrength = 1.0f;

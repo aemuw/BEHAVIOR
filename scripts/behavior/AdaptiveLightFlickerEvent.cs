@@ -4,7 +4,13 @@ public sealed class AdaptiveLightFlickerEvent : BehaviorEvent
 {
 	public override int Priority =>
 		50;
-	
+
+	public override float Chance =>
+		0.60f;
+
+	public override double Cooldown =>
+		25.0;
+
 	private const float RequiredCuriosity = 0.45f;
 
 	private const float RequiredConfidence = 0.40f;
@@ -45,10 +51,7 @@ public sealed class AdaptiveLightFlickerEvent : BehaviorEvent
 			return false;
 		}
 
-		AdaptiveLight light =
-			FindAvailableLight(tracker);
-
-		return light != null;
+		return FindAvailableLight(tracker) != null;
 	}
 
 	public override void Execute(
@@ -58,32 +61,46 @@ public sealed class AdaptiveLightFlickerEvent : BehaviorEvent
 		AdaptiveLight light =
 			FindAvailableLight(tracker);
 
-		if (light == null)
-		{
-			return;
-		}
-
-		light.TriggerFlicker();
+		light?.TriggerFlicker();
 	}
 
+	//мерехтить найближча до гравця лампа, а не перша в списку
 	private static AdaptiveLight FindAvailableLight(
 		BehaviorTracker tracker)
 	{
-		Godot.Collections.Array<Node> nodes =
-			tracker.GetTree().GetNodesInGroup(
-                "behavior_adaptive_light"
-			);
+		Node player =
+			tracker.GetTree().GetFirstNodeInGroup("player");
 
-		foreach (Node node in nodes)
+		Vector3 origin =
+			player is Node3D playerBody
+				? playerBody.GlobalPosition
+				: Vector3.Zero;
+
+		AdaptiveLight best = null;
+		float bestDistance = float.MaxValue;
+
+		foreach (Node node in
+			tracker.GetTree().GetNodesInGroup(
+				"behavior_adaptive_light"))
 		{
-			if (node is AdaptiveLight light &&
-				GodotObject.IsInstanceValid(light) &&
-				!light.IsFlickering)
+			if (node is not AdaptiveLight light ||
+				!GodotObject.IsInstanceValid(light) ||
+				light.IsFlickering ||
+				!light.Visible)
 			{
-				return light;
+				continue;
+			}
+
+			float distance =
+				light.GlobalPosition.DistanceTo(origin);
+
+			if (distance < bestDistance)
+			{
+				bestDistance = distance;
+				best = light;
 			}
 		}
 
-		return null;
+		return best;
 	}
 }

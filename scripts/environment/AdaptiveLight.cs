@@ -22,6 +22,10 @@ public partial class AdaptiveLight : OmniLight3D
 	public bool IsFlickering =>
 		_isFlickering;
 
+	//базова яскравість без урахування мерехтіння
+	public float BaseEnergy =>
+		_baseEnergy;
+
 	public void TriggerFlicker()
 	{
 		if (_isFlickering)
