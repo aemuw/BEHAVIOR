@@ -20,7 +20,9 @@ public partial class BehaviorTracker : Node
 	public SpatialBehaviorTracker Spatial { get; } = new();
 
 	public BehaviorModel Model { get; } = new();
-
+	
+	public BehaviorProfile Profile { get; } = new();
+	
 	public double WalkTime =>
 		Movement.WalkTime;
 
@@ -275,6 +277,14 @@ public partial class BehaviorTracker : Node
 		TotalTime += delta;
 
 		Look.Update(delta);
+
+		Profile.Recalculate(
+			Movement,
+			Look,
+			Spatial,
+			Interactions,
+			Model
+		);
 
 		if (_observing &&
 			!_observationActionDetected &&
@@ -671,17 +681,30 @@ public partial class BehaviorTracker : Node
 
 		_profileDebug.Text =
 			$"[font_size=14]" +
-			$"Exploration:   {ExplorationTendency:P0}\n" +
-			$"Backtracking:  {BacktrackingTendency:P0}\n\n" +
 
-			$"Meaningful focus:\n" +
-			$"{Interactions.MeaningfulFocusRate:P0}\n\n" +
+			$"EXPLORATION\n" +
+			$"Value:      {Profile.Exploration.Value:P0}\n" +
+			$"Confidence: {Profile.Exploration.Confidence:P0}\n\n" +
 
-			$"Deliberate ignore:\n" +
-			$"{Interactions.DeliberateIgnoreRate:P0}\n\n" +
+			$"CURIOSITY\n" +
+			$"Value:      {Profile.Curiosity.Value:P0}\n" +
+			$"Confidence: {Profile.Curiosity.Confidence:P0}\n\n" +
 
-			$"Deep focus:\n" +
-			$"{Interactions.DeepFocusRate:P0}" +
+			$"AVOIDANCE\n" +
+			$"Value:      {Profile.Avoidance.Value:P0}\n" +
+			$"Confidence: {Profile.Avoidance.Confidence:P0}\n\n" +
+
+			$"REPETITION\n" +
+			$"Value:      {Profile.Repetition.Value:P0}\n" +
+			$"Confidence: {Profile.Repetition.Confidence:P0}\n\n" +
+
+			$"HESITATION\n" +
+			$"Value:      {Profile.Hesitation.Value:P0}\n" +
+			$"Confidence: {Profile.Hesitation.Confidence:P0}\n\n" +
+
+			$"Overall confidence: " +
+			$"{Profile.OverallConfidence:P0}" +
+
 			$"[/font]";
 
 		string prediction =
