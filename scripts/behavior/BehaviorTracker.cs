@@ -1,4 +1,5 @@
 using Godot;
+using System;
 
 public partial class BehaviorTracker : Node
 {
@@ -22,6 +23,8 @@ public partial class BehaviorTracker : Node
 	public BehaviorModel Model { get; } = new();
 	
 	public BehaviorProfile Profile { get; } = new();
+	
+	public event Action<BehaviorObservationResult> ObservationCompleted;
 	
 	public double WalkTime =>
 		Movement.WalkTime;
@@ -461,9 +464,14 @@ public partial class BehaviorTracker : Node
 		);
 	}
 
+	public Door LastInteractedDoor { get; private set; }
+
 	public void ReportDoorInteraction(
-		bool opened)
+		bool opened,
+		Door door)
 	{
+		LastInteractedDoor = door;
+
 		Interactions.ReportDoorInteraction();
 
 		BeginObservation(
@@ -525,13 +533,10 @@ public partial class BehaviorTracker : Node
 			return;
 		}
 
-		_observationActionDetected =
-			true;
-
+		_observationActionDetected = true;
 		_observing = false;
 
-		_lastObservedAction =
-			action;
+		_lastObservedAction = action;
 
 		LastReactionTime =
 			Mathf.Clamp(
@@ -540,9 +545,31 @@ public partial class BehaviorTracker : Node
 				(float)ObservationWindow
 			);
 
+		Prediction? prediction =
+			_currentPrediction;
+
+		bool wasEvaluated =
+			prediction.HasValue &&
+			prediction.Value.Samples >= 3;
+
+		bool wasHit =
+			wasEvaluated &&
+			prediction.Value.Action == action;
+
 		Model.Observe(
 			_observationContext,
 			action
+		);
+
+		ObservationCompleted?.Invoke(
+			new BehaviorObservationResult(
+				_observationContext,
+				action,
+				prediction,
+				wasEvaluated,
+				wasHit,
+				LastReactionTime
+			)
 		);
 	}
 

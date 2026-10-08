@@ -15,13 +15,20 @@ public partial class Door : AnimatableBody3D, IInteractable
 
 	public override void _Ready()
 	{
-		_tracker = GetNode<BehaviorTracker>("/root/BehaviorTracker");
+		_tracker =
+			GetNode<BehaviorTracker>(
+                "/root/BehaviorTracker"
+			);
 	}
 
 	public void Interact(Node3D interactor)
 	{
 		SetOpen(!IsOpen);
-		_tracker.ReportDoorInteraction(IsOpen);
+
+		_tracker.ReportDoorInteraction(
+			IsOpen,
+			this
+		);
 	}
 
 	public void SetOpen(bool open)
@@ -29,12 +36,48 @@ public partial class Door : AnimatableBody3D, IInteractable
 		IsOpen = open;
 
 		_tween?.Kill();
+
 		_tween = CreateTween();
+
 		_tween.TweenProperty(
 			this,
 			"rotation:y",
-			Mathf.DegToRad(open ? OpenAngleDegrees : 0.0f),
+			Mathf.DegToRad(
+				open
+					? OpenAngleDegrees
+					: 0.0f
+			),
 			OpenTime
-		).SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+		)
+		.SetTrans(
+			Tween.TransitionType.Sine
+		)
+		.SetEase(
+			Tween.EaseType.InOut
+		);
+	}
+
+	public void ScheduleAdaptiveClose(
+		double delay = 1.2)
+	{
+		if (!IsOpen)
+		{
+			return;
+		}
+
+		GetTree()
+			.CreateTimer(delay)
+			.Timeout += () =>
+			{
+				if (!IsInsideTree())
+				{
+					return;
+				}
+
+				if (IsOpen)
+				{
+					SetOpen(false);
+				}
+			};
 	}
 }

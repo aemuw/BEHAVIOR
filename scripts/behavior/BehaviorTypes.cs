@@ -1,4 +1,3 @@
-//контекст: що відбулося перед прогнозом
 public enum BehaviorContext
 {
 	None,
@@ -12,7 +11,6 @@ public enum BehaviorContext
 	RoomExited,
 }
 
-//перша помітна дія гравця після контексту
 public enum BehaviorAction
 {
 	Idle,
@@ -28,13 +26,19 @@ public enum BehaviorAction
 	TurnAround,
 }
 
-//результат прогнозу
-//Probability = наскільки ймовірна конкретна дія
-//Confidence = скільки даних ми маємо
-//Samples = кількість попередніх спостережень контексту
 public readonly record struct Prediction(
 	BehaviorAction Action,
 	float Probability,
 	float Confidence,
 	int Samples
+);
+
+//результат одного behavioral observation.
+public readonly record struct BehaviorObservationResult(
+	BehaviorContext Context,
+	BehaviorAction ActualAction,
+	Prediction? Prediction,
+	bool WasEvaluated,
+	bool WasHit,
+	double ReactionTime
 );
