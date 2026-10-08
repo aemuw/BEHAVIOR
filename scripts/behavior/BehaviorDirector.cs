@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using System.Linq;
 
 public partial class BehaviorDirector : Node
 {
@@ -7,17 +8,18 @@ public partial class BehaviorDirector : Node
 
 	private const double GlobalEventCooldown = 8.0;
 
-	private readonly List<BehaviorEvent> _events =
-		new()
+	private readonly List<BehaviorEvent> _events = new()
 		{
-			new AdaptiveDoorCloseEvent()
+			new AdaptiveDoorCloseEvent(),
+			new AdaptiveLightFlickerEvent()
 		};
 
+	private readonly Dictionary<
+		BehaviorContext,
+		int
+	> _hitStreaks = new();
+
 	private BehaviorTracker _tracker;
-
-	private BehaviorContext _lastContext;
-
-	private int _consecutiveHits;
 
 	private double _lastEventTime = -999.0;
 
@@ -25,14 +27,29 @@ public partial class BehaviorDirector : Node
 
 	public string LastEventId { get; private set; } = "-";
 
+	public BehaviorContext LastContext { get; private set; }
+		= BehaviorContext.None;
+
+	public BehaviorAction LastPredictedAction { get; private set; }
+		= BehaviorAction.Idle;
+
+	public BehaviorAction LastActualAction { get; private set; }
+		= BehaviorAction.Idle;
+
+	public string LastDecision { get; private set; }
+		= "Waiting for observation";
+
+	public string LastDecisionReason { get; private set; }
+		= "-";
+
 	public int ConsecutiveHits =>
-		_consecutiveHits;
+		GetHitStreak(LastContext);
 
 	public override void _Ready()
 	{
 		_tracker =
 			GetNode<BehaviorTracker>(
-                "/root/BehaviorTracker"
+				"/root/BehaviorTracker"
 			);
 
 		_tracker.ObservationCompleted +=
@@ -48,29 +65,76 @@ public partial class BehaviorDirector : Node
 		}
 	}
 
+	public int GetHitStreak(
+		BehaviorContext context)
+	{
+		return _hitStreaks.TryGetValue(
+			context,
+			out int streak
+		)
+			? streak
+			: 0;
+	}
+
 	private void OnObservationCompleted(
 		BehaviorObservationResult result)
 	{
-		UpdatePredictionStreak(result);
+		LastContext =
+			result.Context;
 
-		if (!result.WasEvaluated ||
-			!result.WasHit)
+		LastActualAction =
+			result.ActualAction;
+
+		LastPredictedAction =
+			result.Prediction?.Action
+			?? BehaviorAction.Idle;
+
+		UpdatePredictionStreak(
+			result
+		);
+
+		if (!result.WasEvaluated)
 		{
+			LastDecision =
+				"NO EVALUATION";
+
+			LastDecisionReason =
+				"Not enough samples";
+
 			return;
 		}
 
-		if (result.Prediction is not Prediction prediction)
+		if (!result.WasHit)
 		{
+			LastDecision =
+				"MISS";
+
+			LastDecisionReason =
+				$"Expected {result.Prediction?.Action}, " +
+				$"got {result.ActualAction}";
+
 			return;
 		}
 
-		if (!CanTriggerEvent())
+		if (!CanTriggerEvent(
+				result.Context))
 		{
+			LastDecision =
+				"HIT / NO EVENT";
+
+			LastDecisionReason =
+				BuildCooldownReason(
+					result.Context
+				);
+
 			return;
 		}
 
 		foreach (BehaviorEvent behaviorEvent
-				 in _events)
+			 in _events
+				 .OrderByDescending(
+					 e => e.Priority
+				 ))
 		{
 			if (!behaviorEvent.CanExecute(
 					result,
@@ -92,50 +156,62 @@ public partial class BehaviorDirector : Node
 			_lastEventTime =
 				_tracker.TotalTime;
 
-			_consecutiveHits = 0;
+			LastDecision =
+				"EVENT TRIGGERED";
 
-			break;
+			LastDecisionReason =
+				behaviorEvent.Id;
+
+			_hitStreaks[result.Context] = 0;
+
+			return;
 		}
+
+		LastDecision =
+			"HIT / EVENT BLOCKED";
+
+		LastDecisionReason =
+			"BehaviorEvent conditions not satisfied";
 	}
 
 	private void UpdatePredictionStreak(
 		BehaviorObservationResult result)
 	{
-		if (!result.WasEvaluated ||
-			!result.WasHit)
+		if (!result.WasEvaluated)
 		{
-			_consecutiveHits = 0;
+			return;
+		}
 
-			_lastContext =
-				BehaviorContext.None;
+		BehaviorContext context =
+			result.Context;
+
+		if (!result.WasHit)
+		{
+			_hitStreaks[context] = 0;
 
 			return;
 		}
 
-		if (_lastContext ==
-			result.Context)
-		{
-			_consecutiveHits++;
-		}
-		else
-		{
-			_consecutiveHits = 1;
+		int streak =
+			GetHitStreak(context);
 
-			_lastContext =
-				result.Context;
-		}
+		streak++;
 
-		if (_consecutiveHits >
+		if (streak >
 			RequiredConsecutiveHits)
 		{
-			_consecutiveHits =
+			streak =
 				RequiredConsecutiveHits;
 		}
+
+		_hitStreaks[context] =
+			streak;
 	}
 
-	private bool CanTriggerEvent()
+	private bool CanTriggerEvent(
+		BehaviorContext context)
 	{
-		if (_consecutiveHits <
+		if (GetHitStreak(context) <
 			RequiredConsecutiveHits)
 		{
 			return false;
@@ -149,5 +225,35 @@ public partial class BehaviorDirector : Node
 		}
 
 		return true;
+	}
+
+	private string BuildCooldownReason(
+		BehaviorContext context)
+	{
+		int streak =
+			GetHitStreak(context);
+
+		if (streak <
+			RequiredConsecutiveHits)
+		{
+			return
+				$"Streak {streak}/" +
+				$"{RequiredConsecutiveHits}";
+		}
+
+		double remaining =
+			GlobalEventCooldown -
+			(
+				_tracker.TotalTime -
+				_lastEventTime
+			);
+
+		if (remaining > 0.0)
+		{
+			return
+				$"Cooldown {remaining:F1}s";
+		}
+
+		return "No event matched";
 	}
 }

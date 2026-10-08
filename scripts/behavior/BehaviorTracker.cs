@@ -24,8 +24,9 @@ public partial class BehaviorTracker : Node
 	
 	public BehaviorProfile Profile { get; } = new();
 	
-	public event Action<BehaviorObservationResult> ObservationCompleted;
-	
+	public event Action<BehaviorObservationResult>
+		ObservationCompleted;
+
 	public double WalkTime =>
 		Movement.WalkTime;
 
@@ -464,13 +465,18 @@ public partial class BehaviorTracker : Node
 		);
 	}
 
-	public Door LastInteractedDoor { get; private set; }
-
+	public Door LastInteractedDoor 
+	{
+		get;
+		private set;
+	}
+	
 	public void ReportDoorInteraction(
 		bool opened,
 		Door door)
 	{
-		LastInteractedDoor = door;
+		LastInteractedDoor =
+			door;
 
 		Interactions.ReportDoorInteraction();
 
@@ -533,10 +539,14 @@ public partial class BehaviorTracker : Node
 			return;
 		}
 
-		_observationActionDetected = true;
-		_observing = false;
+		_observationActionDetected =
+			true;
 
-		_lastObservedAction = action;
+		_observing =
+			false;
+
+		_lastObservedAction =
+			action;
 
 		LastReactionTime =
 			Mathf.Clamp(
@@ -649,6 +659,10 @@ public partial class BehaviorTracker : Node
 
 	private void UpdateDebugText()
 	{
+		BehaviorDirector director =
+			GetNode<BehaviorDirector>(
+				"/root/BehaviorDirector"
+		);
 		_movementDebug.Text =
 			$"[font_size=14]" +
 			$"Time: {TotalTime:F1}s\n\n" +
@@ -776,7 +790,14 @@ public partial class BehaviorTracker : Node
 			$"Predictability: {Model.Predictability:P0}\n" +
 			$"Recent:         {Model.RecentPredictability:P0}\n" +
 			$"Above chance:   {Model.PredictabilityAboveChance:P0}\n" +
-			$"Brier:          {Model.LastBrierScore:F3}" +
+			$"Brier:          {Model.LastBrierScore:F3}\n\n" +
+
+			$"DIRECTOR\n" +
+			$"Last decision:    {director.LastDecision}\n" +
+			$"Reason:           {director.LastDecisionReason}\n" +
+			$"Context streak:   {director.ConsecutiveHits}\n" +
+			$"Events triggered: {director.EventsTriggered}\n" +
+			$"Last event:       {director.LastEventId}" +
 			$"[/font]";
 	}
 }

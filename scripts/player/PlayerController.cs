@@ -31,7 +31,9 @@ public partial class PlayerController : CharacterBody3D
 			GetNode<BehaviorTracker>(
                 "/root/BehaviorTracker"
 			);
-
+		
+		AddToGroup("player");
+		
 		Input.MouseMode =
 			Input.MouseModeEnum.Captured;
 	}

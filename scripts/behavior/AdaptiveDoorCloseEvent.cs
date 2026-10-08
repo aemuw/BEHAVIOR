@@ -2,13 +2,16 @@ using Godot;
 
 public sealed class AdaptiveDoorCloseEvent : BehaviorEvent
 {
+	public override int Priority =>
+		100;
+	
 	private const float RequiredPredictionProbability = 0.60f;
 
-	private const float RequiredPredictionConfidence = 0.55f;
+	private const float RequiredPredictionConfidence = 0.50f;
 
-	private const float RequiredProfilePredictability = 0.60f;
+	private const int RequiredContextEvaluations = 3;
 
-	private const float RequiredProfileConfidence = 0.45f;
+	private const float RequiredRecentAccuracy = 0.70f;
 
 	public override string Id =>
 		"adaptive_door_close";
@@ -49,14 +52,24 @@ public sealed class AdaptiveDoorCloseEvent : BehaviorEvent
 			return false;
 		}
 
-		if (tracker.Profile.Predictability.Value <
-			RequiredProfilePredictability)
+		int evaluations =
+			tracker.Model.GetEvaluations(
+				BehaviorContext.DoorOpened
+			);
+
+		if (evaluations <
+			RequiredContextEvaluations)
 		{
 			return false;
 		}
 
-		if (tracker.Profile.Predictability.Confidence <
-			RequiredProfileConfidence)
+		float recentAccuracy =
+			tracker.Model.GetRecentPredictability(
+				BehaviorContext.DoorOpened
+			);
+
+		if (recentAccuracy <
+			RequiredRecentAccuracy)
 		{
 			return false;
 		}
@@ -70,12 +83,7 @@ public sealed class AdaptiveDoorCloseEvent : BehaviorEvent
 			return false;
 		}
 
-		if (!door.IsOpen)
-		{
-			return false;
-		}
-
-		return true;
+		return door.IsOpen;
 	}
 
 	public override void Execute(

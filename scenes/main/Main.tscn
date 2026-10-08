@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://ceisu5x1yjlhx" path="res://scenes/environment/Door.tscn" id="1_nha0i"]
 [ext_resource type="PackedScene" uid="uid://7vgw5ui7wwuv" path="res://scenes/player/Player.tscn" id="1_u1xfj"]
+[ext_resource type="Script" uid="uid://d2jpf53s7lac2" path="res://scripts/environment/AdaptiveLight.cs" id="3_q24mn"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_3mj47"]
 size = Vector3(12, 0.2, 12)
@@ -95,7 +96,10 @@ shadow_enabled = true
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1424793213]
 environment = SubResource("Environment_sijt7")
 
-[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1094969522]
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1094969522 groups=["behavior_adaptive_light"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
 shadow_enabled = true
 omni_range = 10.0
+script = ExtResource("3_q24mn")
+FlickerMinEnergy = 0.02
+FlickerDuration = 0.7
